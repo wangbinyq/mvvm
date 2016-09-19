@@ -23,9 +23,9 @@ class Observer {
         $observer.$$callbacks = $observer.$$callbacks || {}
 
         if (isArray(obj) && callback === undefined) {
-            $observer.observeArray(obj, keypath.bind(obj))
+            $observer.observeArray(obj, keypath)
         } else {
-            $observer.observe(obj, keypath, callback.bind(obj))
+            $observer.observe(obj, keypath, callback)
         }
 
         return $observer

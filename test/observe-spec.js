@@ -42,14 +42,6 @@ describe('observe', () => {
         expect(oval).toBe(20)    
     })
 
-    it('bind obj of callback', () => {
-        let self, obj = {a: {c: 100}}
-        const ob1 = observe(obj, 'a', function(newValue, oldValue) {
-            self = this
-        })
-        expect(self).toBe(obj)
-    })
-
     it('can observe same object', () => {
         let anval, aoval, cnval, coval, obj = {a: {c: 100}}
         const ob1 = observe(obj, 'a', function(newValue, oldValue) {
