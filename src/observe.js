@@ -1,56 +1,89 @@
-import {isObject, isArray} from './utils'
+import {
+    isObject,
+    isArray
+} from './utils'
+
+const ARRAY_METHODS = [
+    'push',
+    'pop',
+    'shift',
+    'unshift',
+    'sort',
+    'reverse',
+    'splice'
+]
 
 class Observer {
     constructor(obj, keypath, callback) {
         this.target = obj
-        this.target.$observer = this
-        this.$$observeProps = {}
-        this.$$callbacks = {}
-        this.observe(keypath, callback)
-    }
+        this.target.$observer = this.target.$observer || this
 
-    observe(keypath, callback) {
-        let path, refCallback = callback.bind(this.target)
-        if(keypath.indexOf('.') != -1) {
-            refCallback = null
-            path = keypath.split('.')
+        const $observer = this.target.$observer
+        $observer.$$props = $observer.$$props || {}
+        $observer.$$callbacks = $observer.$$callbacks || {}
+
+        if (isArray(obj) && callback === undefined) {
+            $observer.observeArray(obj, keypath.bind(obj))
         } else {
-            path = [keypath]
+            $observer.observe(obj, keypath, callback.bind(obj))
         }
 
-        const $observer = this
-        const target = $observer.target
-        const key = path[0]
-        
-        const value = $observer.$$observeProps[key] = target[key]
-        observe(value, path.slice(1).join('.'), callback)
+        return $observer
+    }
+
+    observe(target, keypath, callback) {
+        const $observer = target.$observer
+        let prop
+        if (keypath.indexOf('.') != -1) {
+            prop = keypath.split('.')
+        } else {
+            if ($observer.$$callbacks[keypath]) {
+                $observer.$$callbacks[keypath].push(callback)
+            } else {
+                $observer.$$callbacks[keypath] = [callback]
+            }
+            prop = [keypath]
+        }
+
+        const key = prop[0]
+        $observer.$$callbacks[key] = $observer.$$callbacks[key] || []
+        const value = $observer.$$props[key] = target[key]
+        observe(value, prop.slice(1).join('.'), callback)
+
         Object.defineProperty(target, key, {
             get() {
-                return $observer.$$observeProps[key]
+                return $observer.$$props[key]
             },
             set(newValue) {
-                const value = $observer.$$observeProps[key]
-                if(newValue != value) {
-                    $observer.$$observeProps[key] = newValue
-                    observe(newValue, path.slice(1).join('.'), callback)
-                    if(refCallback) {
-                        refCallback(newValue, value)
-                    }
+                const value = $observer.$$props[key]
+                if (newValue != value) {
+                    $observer.$$props[key] = newValue
+                    observe(newValue, prop.slice(1).join(','), callback)
+                    $observer.$$callbacks[key].forEach((callback) => {
+                        callback(newValue, value)
+                    })
                 }
             }
         })
-        if(refCallback) {
-            refCallback(value, value)
-        }
+        $observer.$$callbacks[key].forEach((callback) => {
+            callback(value, value)
+        })
+    }
+
+    observeArray(target, callback) {
+        ARRAY_METHODS.forEach((method) => {
+            target[method] = (...args) => {
+                const oldValue = target.slice(0)
+                Array.prototype[method].apply(target, args)
+                callback(target, oldValue)
+            }
+        })
+        callback(target, target)
     }
 }
 
 export default function observe(obj, keypath, callback) {
-    if(isObject(obj)) {
-        if(obj.$observer) {
-            obj.$observer.observe(keypath, callback)
-            return obj.$observer
-        }
+    if (isObject(obj)) {
         return new Observer(obj, keypath, callback)
     }
 }
