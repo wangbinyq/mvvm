@@ -1,4 +1,4 @@
-import {isFunction, isObject} from './utils'
+import {isFunction} from './utils'
 import observe from './observe'
 
 export class Binding {
@@ -13,8 +13,8 @@ export class Binding {
             this.binder = binder
         }
         this.keypath = keypath
-        this.keys = this.keypath.split('.')
         this.model = model
+
         this.bind = this.bind.bind(this)
         this.unbind = this.unbind.bind(this)
         this.sync = this.sync.bind(this)
@@ -25,10 +25,14 @@ export class Binding {
         if(this.binder.bind) {
             this.binder.bind.call(this, this.el)
         }
-        observe(this.model, this.keypath, this.sync)
+        this.observer = observe(this.model, this.keypath, this.sync)
+        this.sync()
     }
 
     unbind() {
+        if(this.observer) {
+            this.observer.unobserve()
+        }
         if(this.binder.unbind) {
             this.binder.unbind.call(this, this.el)
         }
@@ -41,32 +45,21 @@ export class Binding {
     }
 
     update() {
-        if(this.binder.update) {
-            this.binder.update.call(this, this.el)
+        if(this.binder.value) {
+            this.value = this.binder.value(this.el)
         }
     }
 
     get value() {
-        let res = this.model
-        for(let i=0; i<this.keys.length; i++) {
-            res = res[this.keys[i]]
-            if(res === undefined) {
-                break
-            }
+        if(this.observer) {
+            return this.observer.value
         }
-        return res
     }
 
-    set value(value) {
-        let res = this.model
-        let key = this.keys[this.keys.length - 1]
-        for(let i=0; i<this.keys.length-1; i++) {
-            let key = this.keys[i]
-            if(res.hasOwnProperty(key)) {
-                res = res[key] = {}
-            }
+    set value(newValue) {
+        if(this.observer) {
+            this.observer.value = newValue
         }
-        res[key] = value
     }
 }
 
