@@ -10,6 +10,7 @@ export function isInArray(arr, item) {
     return isArray(arr) && arr.indexOf(item) != -1
 }
 
+
 export function isFunction(obj) {
-    return Object.prototype.toString.call(obj) === '[object Function]'
+    return Object.prototype.toString.call(obj) === '[object Function]'    
 }

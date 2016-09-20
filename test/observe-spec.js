@@ -1,100 +1,124 @@
 import observe from '../src/observe'
 
+const ARRAY_METHODS = [
+    'push',
+    'pop',
+    'shift',
+    'unshift',
+    'sort',
+    'reverse',
+    'splice'
+]
+
 describe('observe', () => {
     it('can observe', () => {
-        let ob = observe({}, 'a', () => {})
+        let ob = observe({}, '', () => {})
         expect(ob).toBeDefined()
 
         ob = undefined
-        ob = observe([], () => {})
+        ob = observe([], '', () => {})
         expect(ob).toBeDefined()
-
-        ob = undefined
-        ob = observe('', '', () => {})
-        expect(ob).not.toBeDefined() // not observe literal
     })
 
     it('can watch prop changed', () => {
-        let nval, oval, obj = {a: 100}
-        observe(obj, 'a', function(newValue, oldValue) {
-            nval = newValue
-            oval = oldValue
+        let nval, obj = {a: 100}
+        observe(obj, 'a', function() {
+            nval = obj.a
         })
-        expect(oval).toBe(100)
-        expect(nval).toBe(100)
+        expect(nval).not.toBeDefined()
         obj.a = 102
         expect(nval).toBe(102)
-        expect(oval).toBe(100)
     })
 
     it('can watch nest prop changed', () => {
-        let nval, oval, obj = {a: {c: 100}}
-        observe(obj, 'a.c', function(newValue, oldValue) {
-            nval = newValue
-            oval = oldValue
+        let nval, obj = {a: {c: 100}}
+        observe(obj, 'a.c', function() {
+            nval = obj.a.c
         })
         obj.a.c = 102
         expect(nval).toBe(102)
-        expect(oval).toBe(100) 
 
         obj.a = {c: 20}
         expect(nval).toBe(20)     
-        expect(oval).toBe(20)    
-    })
-
-    it('can observe same object', () => {
-        let anval, aoval, cnval, coval, obj = {a: {c: 100}}
-        const ob1 = observe(obj, 'a', function(newValue, oldValue) {
-            anval = newValue
-            aoval = oldValue
-        })
-        const ob2 = observe(obj, 'a.c', function(newValue, oldValue){
-            cnval = newValue
-            coval = oldValue            
-        })
-        expect(ob2).toBe(ob1)
-        expect(anval).toBe(aoval)
-        expect(anval).toBe(obj.a)
-        expect(cnval).toBe(coval)
-        expect(cnval).toBe(obj.a.c)
-
-        obj.a = {c: 20}
-        expect(anval).toBe(obj.a)
-        expect(cnval).toBe(20)
     })
 
     it('can watch array changed', () => {
-        let arr = [1, 2, 3], nval, oval
-        observe(arr, function(newValue, oldValue) {
-            nval = newValue.slice(0)
-            oval = oldValue.slice(0)
+        let nval, arr = [1, 2, 3]
+        observe(arr, '1', function() {
+            nval = arr.slice(0)
         })
+        arr[1] = 100
         expect(nval).toEqual(arr.slice(0))
-        expect(oval).toEqual(arr.slice(0))
-
-        arr.push(4)
-        expect(nval).toEqual([1, 2, 3, 4])
-        expect(oval).toEqual([1, 2, 3])
-
-        observe(arr, '1', function(newValue, oldValue) {
-            nval = newValue
-            oval =oldValue
-        })
-        expect(nval).toBe(2)
-        arr[1] = 0
-        expect(nval).toBe(0)
     })
 
-    it('can observe complex object', () => {
-        let obj = { a: 1, b: 2, c: [{ d: [4] }] }, nval, oval
-        observe(obj, 'c.0.d.0', function(newValue, oldValue) {
-            nval = newValue
-            oval =oldValue           
+    ARRAY_METHODS.forEach(method => {
+        it('can watch array ' + method + ' changed', () => {
+            let nval, obj = {a: [1, 2, 3]}
+            observe(obj, 'a.1', function() {
+                nval = obj.a.slice(0)
+            })
+            expect(obj[method]).not.toBeDefined()
+            obj.a[method](1)
+            expect(nval).toEqual(obj.a.slice(0))
         })
-        expect(nval).toBe(4)
-        expect(oval).toBe(4)
-        obj.c[0].d[0] = 100
-        expect(nval).toBe(100)
-        expect(oval).toBe(4)
+    })
+
+    it('can get and set value', () => {
+        let obj = {a: 100}, nval
+        const ob = observe(obj, 'a', () => {
+            nval = obj.a
+        })
+        expect(ob.value).toBe(100)
+        ob.value = 20
+        expect(ob.value).toBe(20)
+        expect(nval).toBe(20)
+    })
+
+    it('can watch complex object', () => {
+        let obj = { a: 1, b: 2, c: [{ d: [4] }] }, nval
+        const ob = observe(obj, 'c.0.d.0', function() {
+            nval = obj.c[0].d[0]
+        })
+        ob.value = 20
+        expect(nval).toBe(20)
+    })
+
+    it('can watch intermediary path changed', () => {
+        let obj = { a: 1, b: {c: 20} }, nval
+        const ob = observe(obj, 'b.c', function() {
+            nval = obj.b.c
+        })
+        obj.b.c = 30
+        expect(nval).toBe(30)
+        obj.b = {c: 20}
+        expect(nval).toBe(20)                    
+    })
+
+    it('can watch same object', () => {
+        function cb() {
+            cval = obj.c
+        }
+        let obj = { a: 1, b: 2, c: [{ d: [4] }] }
+        let aval, bval, cval, dval
+        const oba = observe(obj, 'a', function() {
+            aval = obj.a
+        })
+        const obb = observe(obj, 'b', function() {
+            bval = obj.b
+        })
+        const obc = observe(obj, 'c', cb)     
+        const obd = observe(obj, 'c.0.d', function() {
+            dval = obj.c[0].d
+        })
+        obj.a = 10
+        expect(aval).toBe(10)
+        obj.c[0].d = 20
+        expect(dval).toBe(20)
+        obj.c = [{d: 30}]
+        expect(cval).toBe(obj.c)
+        expect(dval).toBe(30)
+        expect(obj.$callbacks['c'].length).toBe(2)       
+        expect(obj.$callbacks['c'][0]).toBe(cb)    
+        expect(obj.$callbacks['c'][1]).toBe(obd.update)      
     })
 })
