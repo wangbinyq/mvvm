@@ -1,4 +1,5 @@
 import binders from './binders'
+import {Binding, TextBinding} from './bindings'
 import {defined} from './utils'
 
 function parseTemplate() {
@@ -70,8 +71,32 @@ export default class ViewModel {
                 if(!defined(binder)) {
                     binder = this.binders['*']
                 }
+
+                if(binder.block) {
+                    block = true
+                    attributes = [attribute]
+                }
             }
         })
+
+        attributes = attributes || Array.prototype.slice.call(el.attributes)
+
+        attributes.forEach((attribute) => {
+            if(bindingRegExp.test(attribute.name)) {
+                let type = attribute.name.replace(bindingRegExp, '')
+                this.buildBinding(Binding, el, type, attribute.value)
+            }
+        })
+
+        if(!block) {
+            let type = el.nodeName.toLowerCase()
+
+            if(this.components[type] && !el._bound) {
+                // TODO ComponentBinding
+            }
+        }
+
+        return block
     }
 }
 
