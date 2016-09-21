@@ -1,4 +1,4 @@
-import { Binding } from '../src/bindings'
+import { Binding, TextBinding } from '../src/bindings'
 
 describe('Binding', () => {
     it('sync model change to dom', () => {
@@ -44,5 +44,16 @@ describe('Binding', () => {
         el.checked = true
         expect(el.onchange).toBe(null)
         expect(binding.observer)
+    })
+})
+
+describe('TextBinding', () => {
+    it('can sync model to el', () => {
+        const el = document.createElement('div')
+        const obj = {}
+        const binding = new TextBinding(el, null, 'hello', obj)
+        binding.bind()
+        obj.hello = 1
+        expect(el.innerText).toBe('1')
     })
 })

@@ -14,3 +14,19 @@ export function isInArray(arr, item) {
 export function isFunction(obj) {
     return Object.prototype.toString.call(obj) === '[object Function]'    
 }
+
+export function defined(obj) {
+    return !(obj === undefined || obj === null)
+}
+
+export function bindEvent(el, event, cb) {
+    el.addEventListener(event, cb)
+}
+
+export function unbindEvent(el, event, cb) {
+    el.removeEventListener(event, cb)
+}
+
+export function getString(value) {
+    return defined(value) ? value.toString() : undefined
+}
