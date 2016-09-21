@@ -1,3 +1,6 @@
+import binders from './binders'
+import {defined} from './utils'
+
 function parseTemplate() {
 
 }
@@ -5,9 +8,11 @@ function parseTemplate() {
 export default class ViewModel {
     constructor(el, options) {
         this.els = el instanceof Array ? el : [el]
-        this.options = options
-        this.templateDelimiters = this.options.templateDelimiters || ['{', '}']
-        this.model = this.options.model || {}
+        for(let key in options) {
+            this[key] = options[key]
+        }
+        this.templateDelimiters = this.templateDelimiters || ['{', '}']
+        this.model = this.model || {}
         
         this.build()
     }
@@ -38,4 +43,37 @@ export default class ViewModel {
             })
         }
     }
+
+    traverse(el) {
+        let bindingRegExp = new RegExp(`^${this.prefix}-`)
+        let block = el.nodeName === 'SCRIPT' || el.nodeName === 'STYLE'
+        let attributes
+        
+        Array.prototype.slice.call(el.attributes).forEach((attribute) => {
+            if(bindingRegExp.test(attribute.name)) {
+                let type = attribute.name.replace(bindingRegExp, '')
+                let binder = this.binders[type]
+                if(!binder) {
+                    Object.keys(this.binders).forEach(identifier => {
+                        let value = this.binders[identifier]
+
+                        if(identifier !== '*' && identifier.indexOf('*') > -1) {
+                            let regexp = new RegExp(`^${identifier.replace(/\*/g, '.+')}$`)
+
+                            if (regexp.test(type)) {
+                                binder = value
+                            }
+                        }
+                    })
+                }
+
+                if(!defined(binder)) {
+                    binder = this.binders['*']
+                }
+            }
+        })
+    }
 }
+
+ViewModel.binders = binders
+ViewModel.prefix = 'x'
