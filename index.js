@@ -74,7 +74,13 @@ class Binding {
         this.sync = this.sync.bind(this)
         this.update = this.update.bind(this)
 
+        this.parsekey()
         this.observer = new Observer(this.vm.model, this.key, this.sync)
+    }
+
+    parsekey() {
+        this.args = this.key.split(':').map((k) => k.trim())
+        this.key = this.args.shift()
     }
 
     bind() {
@@ -82,6 +88,15 @@ class Binding {
             this.binder.bind.call(this, this.el)
         }
         this.sync()
+    }
+
+    unbind() {
+        if(defined(this.observer)) {
+            this.observer.unobserve()
+        }
+        if(defined(this.binder.unbind)) {
+            this.binder.unbind(this.this.el)
+        }
     }
 
     sync() {
@@ -109,6 +124,9 @@ class ViewModel {
     }
 
     compile(el) {
+
+        let block = false
+
         if(el.nodeType !== 1) {
             return
         }
@@ -123,14 +141,15 @@ class ViewModel {
             }
 
             if(defined(binder)) {
-                this.bindings.push(new Binding(this, el, key, binder, data))
+                this.bindings.push(new Binding(this, el, key, binder))
             }
-
         }
 
-        el.childNodes.forEach((childEl) => {
-            this.compile(childEl)
-        })
+        if(!block) {
+            el.childNodes.forEach((childEl) => {
+                this.compile(childEl)
+            })
+        }
     }
 
     bind() {
@@ -141,6 +160,12 @@ class ViewModel {
         })
         this.bindings.forEach(binding => {
             binding.bind()
+        })
+    }
+
+    unbind() {
+        this.bindins.forEach(binding => {
+            binding.unbind()
         })
     }
 }
@@ -156,7 +181,7 @@ ViewModel.binders = {
                 el.checked = !!value
             } else {
                 el.value = value
-            }  
+            }
         },
 
         value(el) {
@@ -182,20 +207,33 @@ ViewModel.binders = {
     },
 
     each: {
-        
+        block: true
+    },
+
+    on: {
+        bind(el) {
+            el.addEventListener(this.args[0], () => { this.observer.value() })
+        }
     },
 
     '*': {
         sync(el, value) {
             if(defined(value)) {
-                el.setAttribute(this.type, value)
+                el.setAttribute(this.args[0], value)
             } else {
-                el.removeAttribute(this.type)
+                el.removeAttribute(this.args[0])
             }
         }
     }
 }
 
-const obj = {text: 'Hello', show: false}
-new ViewModel(document.getElementById('vm'), obj)
-obj.text += ' World'
+// 非框架
+
+const obj = {
+    text: 'Hello', 
+    show: false,
+    reverse() {
+        obj.text = obj.text.split('').reverse().join('')
+    }
+}
+const vm = new ViewModel(document.getElementById('vm'), obj)
