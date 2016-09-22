@@ -46,7 +46,8 @@ class Observer {
 
     unobserve() {
         if(defined(this.obj.$$callbacks[this.key])) {
-            _.remove(this.obj.$$callbacks[this.key], this.cb)
+            const index = this.obj.$$callbacks[this.key].indexOf(this.cb)
+            this.obj.$$callbacks[this.key].splice(index, 1)
         }
     }
 
@@ -227,7 +228,6 @@ ViewModel.binders = {
     }
 }
 
-// 非框架
 
 const obj = {
     text: 'Hello', 
@@ -236,4 +236,11 @@ const obj = {
         obj.text = obj.text.split('').reverse().join('')
     }
 }
+const ob = new Observer(obj, 'a', () => { 
+    console.log(obj.a) 
+})
+obj.a = 'You should see this in console'
+ob.unobserve()
+obj.a = 'You should not see this in console'
+
 const vm = new ViewModel(document.getElementById('vm'), obj)
