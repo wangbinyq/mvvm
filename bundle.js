@@ -54,70 +54,194 @@
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
+	function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	function defined(obj) {
 	    return !_lodash2.default.isUndefined(obj) && !_lodash2.default.isNull(obj);
 	}
 	
+	var ARRAY_METHODS = ['push', 'pop', 'shift', 'unshift', 'sort', 'reverse', 'splice'];
+	
 	var Observer = function () {
-	    function Observer(obj, key, cb) {
+	    function Observer(obj, keypath, callback) {
 	        _classCallCheck(this, Observer);
 	
 	        this.obj = obj;
-	        this.key = key;
-	        this.cb = cb;
-	        this.obj.$$callbacks = this.obj.$$callbacks || {};
-	        this.obj.$$callbacks[this.key] = this.obj.$$callbacks[this.key] || [];
+	        this.keypath = keypath;
+	        this.callback = callback;
+	        this.objectPath = [];
+	        this.update = this.update.bind(this);
 	
-	        this.observe();
+	        this.tokenize();
+	
+	        if (this.key && _lodash2.default.isObject(this.target = this.realize())) {
+	            this.observe(this.key, this.target, this.callback);
+	        }
 	    }
 	
 	    _createClass(Observer, [{
-	        key: 'observe',
-	        value: function observe() {
-	            var observer = this;
-	            var obj = observer.obj;
-	            var key = observer.key;
-	            var callbacks = obj.$$callbacks[key];
-	            var value = obj[key];
-	
-	            var desc = Object.getOwnPropertyDescriptor(obj, key);
-	            if (!(desc && (desc.get || desc.set))) {
-	                Object.defineProperty(obj, key, {
-	                    get: function get() {
-	                        return value;
-	                    },
-	                    set: function set(newValue) {
-	                        if (value !== newValue) {
-	                            value = newValue;
-	
-	                            callbacks.forEach(function (cb) {
-	                                cb();
-	                            });
-	                        }
-	                    }
-	                });
+	        key: 'tokenize',
+	        value: function tokenize() {
+	            this.tokens = this.keypath.split('.');
+	            this.key = this.tokens.pop();
+	        }
+	    }, {
+	        key: 'observeMutations',
+	        value: function observeMutations(obj, key) {
+	            var mutations = obj[key];
+	            if (!_lodash2.default.isArray(mutations)) {
+	                return;
 	            }
-	            if (callbacks.indexOf(observer.cb) === -1) {
-	                callbacks.push(observer.cb);
+	            ARRAY_METHODS.forEach(function (method) {
+	                mutations[method] = function () {
+	                    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+	                        args[_key] = arguments[_key];
+	                    }
+	
+	                    Array.prototype[method].apply(mutations, args);
+	                    if (obj.$callbacks[key]) {
+	                        obj.$callbacks[key].forEach(function (cb) {
+	                            cb();
+	                        });
+	                    }
+	                };
+	            });
+	        }
+	    }, {
+	        key: 'realize',
+	        value: function realize() {
+	            var _this = this;
+	
+	            var current = this.obj,
+	                unreached = false,
+	                prev = void 0;
+	            this.tokens.forEach(function (token, index) {
+	                if (_lodash2.default.isObject(current)) {
+	                    if (typeof _this.objectPath[index] !== 'undefined') {
+	                        if (current !== (prev = _this.objectPath[index])) {
+	                            _this.unobserve(token, prev, _this.update);
+	                            _this.observe(token, current, _this.update);
+	                            _this.objectPath[index] = current;
+	                        }
+	                    } else {
+	                        _this.observe(token, current, _this.update);
+	                        _this.objectPath[index] = current;
+	                    }
+	                    current = current[token];
+	                } else {
+	                    if (unreached === false) {
+	                        unreached = index;
+	                    }
+	
+	                    if (prev = _this.objectPath[index]) {
+	                        _this.unobserve(token, prev, _this.update);
+	                    }
+	                }
+	            });
+	
+	            if (unreached !== false) {
+	                this.objectPath.splice(unreached);
+	            }
+	
+	            return current;
+	        }
+	    }, {
+	        key: 'update',
+	        value: function update() {
+	            var next = void 0,
+	                oldValue = void 0;
+	            if ((next = this.realize()) !== this.target) {
+	                if (_lodash2.default.isObject(this.target)) {
+	                    this.unobserve(this.key, this.target, this.callback);
+	                }
+	
+	                if (_lodash2.default.isObject(next)) {
+	                    this.observe(this.key, next, this.callback);
+	                }
+	
+	                oldValue = this.value;
+	                this.target = next;
+	                if (_lodash2.default.isFunction(this.value) || this.value !== oldValue) {
+	                    this.callback();
+	                }
 	            }
 	        }
 	    }, {
+	        key: 'observe',
+	        value: function observe(key, target, callback) {
+	            var _this2 = this;
+	
+	            target.$callbacks = target.$callbacks || {};
+	            target.$callbacks[key] = target.$callbacks[key] || [];
+	            var desc = Object.getOwnPropertyDescriptor(target, key);
+	
+	            if (!(desc && (desc.get || desc.set))) {
+	                (function () {
+	                    var value = target[key];
+	                    var observer = _this2;
+	                    Object.defineProperty(target, key, {
+	                        get: function get() {
+	                            return value;
+	                        },
+	                        set: function set(newValue) {
+	                            if (newValue !== value) {
+	                                value = newValue;
+	                                if (target.$callbacks[key]) {
+	                                    target.$callbacks[key].forEach(function (cb) {
+	                                        cb();
+	                                    });
+	                                }
+	                                observer.observeMutations(target, key);
+	                            }
+	                        }
+	                    });
+	                })();
+	            }
+	
+	            if (target.$callbacks[key].indexOf(callback) === -1) {
+	                target.$callbacks[key].push(callback);
+	            }
+	            this.observeMutations(target, key);
+	        }
+	    }, {
 	        key: 'unobserve',
-	        value: function unobserve() {
-	            if (defined(this.obj.$$callbacks[this.key])) {
-	                var index = this.obj.$$callbacks[this.key].indexOf(this.cb);
-	                this.obj.$$callbacks[this.key].splice(index, 1);
+	        value: function unobserve(key, target, callback) {
+	            var _this3 = this;
+	
+	            if (key === undefined) {
+	                (function () {
+	                    var obj = void 0;
+	                    _this3.tokens.forEach(function (token, index) {
+	                        if (obj = _this3.objectPath[index]) {
+	                            _this3.unobserve(token, obj, _this3.update);
+	                        }
+	                    });
+	                    if (_lodash2.default.isObject(_this3.target)) {
+	                        _this3.unobserve(_this3.key, _this3.target, _this3.callback);
+	                    }
+	                })();
+	            } else {
+	                if (target.$callbacks && target.$callbacks[key]) {
+	                    var index = target.$callbacks[key].indexOf(callback);
+	                    if (index !== -1) {
+	                        target.$callbacks[key].splice(index, 1);
+	                    }
+	                }
 	            }
 	        }
 	    }, {
 	        key: 'value',
 	        get: function get() {
-	            return this.obj[this.key];
+	            if (_lodash2.default.isObject(this.target)) {
+	                return this.target[this.key];
+	            }
 	        },
 	        set: function set(newValue) {
-	            this.obj[this.key] = newValue;
+	            if (_lodash2.default.isObject(this.target)) {
+	                this.target[this.key] = newValue;
+	            }
 	        }
 	    }]);
 	
@@ -206,7 +330,7 @@
 	    _createClass(ViewModel, [{
 	        key: 'compile',
 	        value: function compile(el) {
-	            var _this = this;
+	            var _this4 = this;
 	
 	            var block = false;
 	
@@ -224,13 +348,17 @@
 	                }
 	
 	                if (defined(binder)) {
+	                    if (binder.block) {
+	                        block = true;
+	                    }
 	                    this.bindings.push(new Binding(this, el, key, binder));
 	                }
+	                el.removeAttribute('data-' + data);
 	            }
 	
 	            if (!block) {
 	                el.childNodes.forEach(function (childEl) {
-	                    _this.compile(childEl);
+	                    _this4.compile(childEl);
 	                });
 	            }
 	        }
@@ -249,7 +377,7 @@
 	    }, {
 	        key: 'unbind',
 	        value: function unbind() {
-	            this.bindins.forEach(function (binding) {
+	            this.bindings.forEach(function (binding) {
 	                binding.unbind();
 	            });
 	        }
@@ -293,15 +421,63 @@
 	    },
 	
 	    each: {
-	        block: true
+	        block: true,
+	
+	        bind: function bind(el) {
+	            if (!defined(this.marker)) {
+	                var attr = this.args[0];
+	                this.marker = document.createComment('mvvm - each - ' + attr);
+	                this.iterated = [];
+	
+	                el.removeAttribute('data-each');
+	                el.parentNode.insertBefore(this.marker, el);
+	                el.parentNode.removeChild(el);
+	            } else {
+	                this.iterated.forEach(function (vm) {
+	                    vm.bind();
+	                });
+	            }
+	        },
+	        unbind: function unbind(el) {
+	            if (defined(this.iterated)) {
+	                this.iterated.forEach(function (vm) {
+	                    vm.unbind();
+	                });
+	                this.iterated = [];
+	            }
+	        },
+	        sync: function sync(el, value) {
+	            var _this5 = this;
+	
+	            var item = this.args[0];
+	            var collection = value || [];
+	
+	            this.iterated.forEach(function (vm) {
+	                vm.unbind();
+	                _this5.marker.parentNode.removeChild(vm.el);
+	            });
+	            this.iterated = [];
+	
+	            collection.forEach(function (model, $index) {
+	                var _data;
+	
+	                var data = (_data = {
+	                    $index: $index
+	                }, _defineProperty(_data, item, model), _defineProperty(_data, '$root', _this5.vm.model), _data);
+	                var template = el.cloneNode(true);
+	                var vm = new ViewModel(template, data);
+	                _this5.iterated.push(vm);
+	                _this5.marker.parentNode.appendChild(template);
+	            });
+	        }
 	    },
 	
 	    on: {
 	        bind: function bind(el) {
-	            var _this2 = this;
+	            var _this6 = this;
 	
 	            el.addEventListener(this.args[0], function () {
-	                _this2.observer.value();
+	                _this6.observer.value();
 	            });
 	        }
 	    },
@@ -317,13 +493,18 @@
 	    }
 	};
 	
-	// 非框架
-	
 	var obj = {
 	    text: 'Hello',
 	    show: false,
 	    reverse: function reverse() {
 	        obj.text = obj.text.split('').reverse().join('');
+	    },
+	
+	    obj: {
+	        arr: ['test1', 'test2', 'test3']
+	    },
+	    add: function add() {
+	        obj.obj.arr.push(obj.text);
 	    }
 	};
 	var ob = new Observer(obj, 'a', function () {
