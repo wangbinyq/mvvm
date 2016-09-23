@@ -25,4 +25,4 @@
 本实现主要参考 [rivets.js 的 es6 分支](https://github.com/mikeric/rivets/tree/es6), 其中 Observer 类是参考 [adapter.js](https://github.com/mikeric/rivets/blob/es6/src/adapter.js) 实现.
 Binding 就是 [bindings.js](https://github.com/mikeric/rivets/blob/es6/src/bindings.js) 对应的简化, 相当于其他 MVVM 中指令, ViewModel 对应 [view.js](https://github.com/mikeric/rivets/blob/es6/src/view.js).
 
->> PS: 由于双向绑定只是简单的实现, 因此指令中的
+>> PS: 由于双向绑定只是简单的实现, 因此指令中的值只能是 Model 的属性

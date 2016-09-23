@@ -375,7 +375,11 @@ ViewModel.binders = {
 
     on: {
         bind(el) {
-            el.addEventListener(this.args[0], () => { this.observer.value() })
+            const args = this.args.slice(1).map((key) => this.vm.model[key])
+            el.addEventListener(this.args[0], (e) => { 
+                args.unshift(e)
+                this.observer.value.apply(this.vm.model, args) 
+            })
         }
     },
 
@@ -395,7 +399,7 @@ const obj = {
     text: 'Hello', 
     show: false,
     reverse() {
-        obj.text = obj.text.split('').reverse().join('')
+        this.text = this.text.split('').reverse().join('')
     },
     obj: {
         arr: [
@@ -405,7 +409,10 @@ const obj = {
         ]
     },
     add() {
-        obj.obj.arr.push(obj.text)
+        this.obj.arr.push(this.text)
+    },
+    remove(index) {
+        obj.obj.arr.splice(index, 1)
     }
 }
 const ob = new Observer(obj, 'a', () => { 

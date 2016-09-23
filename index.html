@@ -16,6 +16,7 @@
         <ul>
             <li data-each="obj.arr: item">
                 <span data-html="$index"></span>: <span data-html="item"></span>
+                <span data-on="$root.remove:click:$index"> X </span>
             </li>
         </ul>
         <button data-on="add:click">add</button>
