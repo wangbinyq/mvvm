@@ -13,6 +13,12 @@
         style: <span data-show="show" data-html="text"></span>
         <br/>        
         <button data-on="reverse: click">reverse</button>
+        <ul>
+            <li data-each="obj.arr: item">
+                <span data-html="$index"></span>: <span data-html="item"></span>
+            </li>
+        </ul>
+        <button data-on="add:click">add</button>
     </div>
     <script src="bundle.js"></script>
 </body>
