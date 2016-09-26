@@ -46,21 +46,61 @@
 
 	'use strict';
 	
+	var _observer = __webpack_require__(1);
+	
+	var _observer2 = _interopRequireDefault(_observer);
+	
+	var _src = __webpack_require__(4);
+	
+	var _src2 = _interopRequireDefault(_src);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	var obj = {
+	    text: 'Hello',
+	    show: false,
+	    reverse: function reverse() {
+	        this.text = this.text.split('').reverse().join('');
+	    },
+	
+	    obj: {
+	        arr: ['test1', 'test2', 'test3']
+	    },
+	    add: function add() {
+	        this.obj.arr.push(this.text);
+	    },
+	    remove: function remove(index) {
+	        obj.obj.arr.splice(index, 1);
+	    }
+	};
+	var ob = new _observer2.default(obj, 'a', function () {
+	    console.log(obj.a);
+	});
+	obj.a = 'You should see this in console';
+	ob.unobserve();
+	obj.a = 'You should not see this in console';
+	
+	var vm = new _src2.default(document.getElementById('vm'), obj);
+
+/***/ },
+/* 1 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	
 	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 	
-	var _lodash = __webpack_require__(1);
+	var _lodash = __webpack_require__(2);
 	
 	var _lodash2 = _interopRequireDefault(_lodash);
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
-	function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	function defined(obj) {
-	    return !_lodash2.default.isUndefined(obj) && !_lodash2.default.isNull(obj);
-	}
 	
 	var ARRAY_METHODS = ['push', 'pop', 'shift', 'unshift', 'sort', 'reverse', 'splice'];
 	
@@ -248,276 +288,10 @@
 	    return Observer;
 	}();
 	
-	var Binding = function () {
-	    function Binding(vm, el, key, binder, type) {
-	        _classCallCheck(this, Binding);
-	
-	        this.vm = vm;
-	        this.el = el;
-	        this.key = key;
-	        this.binder = binder;
-	        this.type = type;
-	        if (_lodash2.default.isFunction(binder)) {
-	            this.binder.sync = binder;
-	        }
-	
-	        this.bind = this.bind.bind(this);
-	        this.sync = this.sync.bind(this);
-	        this.update = this.update.bind(this);
-	
-	        this.parsekey();
-	        this.observer = new Observer(this.vm.model, this.key, this.sync);
-	    }
-	
-	    _createClass(Binding, [{
-	        key: 'parsekey',
-	        value: function parsekey() {
-	            this.args = this.key.split(':').map(function (k) {
-	                return k.trim();
-	            });
-	            this.key = this.args.shift();
-	        }
-	    }, {
-	        key: 'bind',
-	        value: function bind() {
-	            if (defined(this.binder.bind)) {
-	                this.binder.bind.call(this, this.el);
-	            }
-	            this.sync();
-	        }
-	    }, {
-	        key: 'unbind',
-	        value: function unbind() {
-	            if (defined(this.observer)) {
-	                this.observer.unobserve();
-	            }
-	            if (defined(this.binder.unbind)) {
-	                this.binder.unbind(this.this.el);
-	            }
-	        }
-	    }, {
-	        key: 'sync',
-	        value: function sync() {
-	            if (defined(this.observer) && _lodash2.default.isFunction(this.binder.sync)) {
-	                this.binder.sync.call(this, this.el, this.observer.value);
-	            }
-	        }
-	    }, {
-	        key: 'update',
-	        value: function update() {
-	            if (defined(this.observer) && _lodash2.default.isFunction(this.binder.value)) {
-	                this.observer.value = this.binder.value.call(this, this.el);
-	            }
-	        }
-	    }]);
-	
-	    return Binding;
-	}();
-	
-	var ViewModel = function () {
-	    function ViewModel(el, model) {
-	        _classCallCheck(this, ViewModel);
-	
-	        this.el = el;
-	        this.model = model;
-	        this.bindings = [];
-	
-	        this.compile(this.el);
-	
-	        this.bind();
-	    }
-	
-	    _createClass(ViewModel, [{
-	        key: 'compile',
-	        value: function compile(el) {
-	            var _this4 = this;
-	
-	            var block = false;
-	
-	            if (el.nodeType !== 1) {
-	                return;
-	            }
-	
-	            var dataset = el.dataset;
-	            for (var data in dataset) {
-	                var binder = ViewModel.binders[data];
-	                var key = dataset[data];
-	
-	                if (binder === undefined) {
-	                    binder = ViewModel.binders['*'];
-	                }
-	
-	                if (defined(binder)) {
-	                    if (binder.block) {
-	                        block = true;
-	                    }
-	                    this.bindings.push(new Binding(this, el, key, binder));
-	                }
-	                el.removeAttribute('data-' + data);
-	            }
-	
-	            if (!block) {
-	                el.childNodes.forEach(function (childEl) {
-	                    _this4.compile(childEl);
-	                });
-	            }
-	        }
-	    }, {
-	        key: 'bind',
-	        value: function bind() {
-	            this.bindings.sort(function (a, b) {
-	                var aPriority = defined(a.binder) ? a.binder.priority || 0 : 0;
-	                var bPriority = defined(b.binder) ? b.binder.priority || 0 : 0;
-	                return bPriority - aPriority;
-	            });
-	            this.bindings.forEach(function (binding) {
-	                binding.bind();
-	            });
-	        }
-	    }, {
-	        key: 'unbind',
-	        value: function unbind() {
-	            this.bindings.forEach(function (binding) {
-	                binding.unbind();
-	            });
-	        }
-	    }]);
-	
-	    return ViewModel;
-	}();
-	
-	ViewModel.binders = {
-	    value: {
-	        bind: function bind(el) {
-	            el.addEventListener('change', this.update);
-	        },
-	        sync: function sync(el, value) {
-	            if (el.type === 'checkbox') {
-	                el.checked = !!value;
-	            } else {
-	                el.value = value;
-	            }
-	        },
-	        value: function value(el) {
-	            if (el.type === 'checkbox') {
-	                return el.checked;
-	            } else {
-	                return el.value;
-	            }
-	        }
-	    },
-	
-	    html: {
-	        sync: function sync(el, value) {
-	            el.innerHTML = value;
-	        }
-	    },
-	
-	    show: {
-	        priority: 2000,
-	        sync: function sync(el, value) {
-	            el.style.display = value ? '' : 'none';
-	        }
-	    },
-	
-	    each: {
-	        block: true,
-	
-	        bind: function bind(el) {
-	            if (!defined(this.marker)) {
-	                var attr = this.args[0];
-	                this.marker = document.createComment('mvvm - each - ' + attr);
-	                this.iterated = [];
-	
-	                el.removeAttribute('data-each');
-	                el.parentNode.insertBefore(this.marker, el);
-	                el.parentNode.removeChild(el);
-	            } else {
-	                this.iterated.forEach(function (vm) {
-	                    vm.bind();
-	                });
-	            }
-	        },
-	        unbind: function unbind(el) {
-	            if (defined(this.iterated)) {
-	                this.iterated.forEach(function (vm) {
-	                    vm.unbind();
-	                });
-	                this.iterated = [];
-	            }
-	        },
-	        sync: function sync(el, value) {
-	            var _this5 = this;
-	
-	            var item = this.args[0];
-	            var collection = value || [];
-	
-	            this.iterated.forEach(function (vm) {
-	                vm.unbind();
-	                _this5.marker.parentNode.removeChild(vm.el);
-	            });
-	            this.iterated = [];
-	
-	            collection.forEach(function (model, $index) {
-	                var _data;
-	
-	                var data = (_data = {
-	                    $index: $index
-	                }, _defineProperty(_data, item, model), _defineProperty(_data, '$root', _this5.vm.model), _data);
-	                var template = el.cloneNode(true);
-	                var vm = new ViewModel(template, data);
-	                _this5.iterated.push(vm);
-	                _this5.marker.parentNode.appendChild(template);
-	            });
-	        }
-	    },
-	
-	    on: {
-	        bind: function bind(el) {
-	            var _this6 = this;
-	
-	            el.addEventListener(this.args[0], function () {
-	                _this6.observer.value();
-	            });
-	        }
-	    },
-	
-	    '*': {
-	        sync: function sync(el, value) {
-	            if (defined(value)) {
-	                el.setAttribute(this.args[0], value);
-	            } else {
-	                el.removeAttribute(this.args[0]);
-	            }
-	        }
-	    }
-	};
-	
-	var obj = {
-	    text: 'Hello',
-	    show: false,
-	    reverse: function reverse() {
-	        obj.text = obj.text.split('').reverse().join('');
-	    },
-	
-	    obj: {
-	        arr: ['test1', 'test2', 'test3']
-	    },
-	    add: function add() {
-	        obj.obj.arr.push(obj.text);
-	    }
-	};
-	var ob = new Observer(obj, 'a', function () {
-	    console.log(obj.a);
-	});
-	obj.a = 'You should see this in console';
-	ob.unobserve();
-	obj.a = 'You should not see this in console';
-	
-	var vm = new ViewModel(document.getElementById('vm'), obj);
+	exports.default = Observer;
 
 /***/ },
-/* 1 */
+/* 2 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(global, module) {/**
@@ -17416,10 +17190,10 @@
 	  }
 	}.call(this));
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(2)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(3)(module)))
 
 /***/ },
-/* 2 */
+/* 3 */
 /***/ function(module, exports) {
 
 	module.exports = function(module) {
@@ -17433,6 +17207,318 @@
 		return module;
 	}
 
+
+/***/ },
+/* 4 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _lodash = __webpack_require__(2);
+	
+	var _lodash2 = _interopRequireDefault(_lodash);
+	
+	var _binding = __webpack_require__(5);
+	
+	var _binding2 = _interopRequireDefault(_binding);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	function defined(obj) {
+	    return !_lodash2.default.isUndefined(obj) && !_lodash2.default.isNull(obj);
+	}
+	
+	var ViewModel = function () {
+	    function ViewModel(el, model) {
+	        _classCallCheck(this, ViewModel);
+	
+	        this.el = el;
+	        this.model = model;
+	        this.bindings = [];
+	
+	        this.compile(this.el);
+	
+	        this.bind();
+	    }
+	
+	    _createClass(ViewModel, [{
+	        key: 'compile',
+	        value: function compile(el) {
+	            var _this = this;
+	
+	            var block = false;
+	
+	            if (el.nodeType !== 1) {
+	                return;
+	            }
+	
+	            var dataset = el.dataset;
+	            for (var data in dataset) {
+	                var binder = ViewModel.binders[data];
+	                var key = dataset[data];
+	
+	                if (binder === undefined) {
+	                    binder = ViewModel.binders['*'];
+	                }
+	
+	                if (defined(binder)) {
+	                    if (binder.block) {
+	                        block = true;
+	                    }
+	                    this.bindings.push(new _binding2.default(this, el, key, binder));
+	                }
+	                el.removeAttribute('data-' + data);
+	            }
+	
+	            if (!block) {
+	                el.childNodes.forEach(function (childEl) {
+	                    _this.compile(childEl);
+	                });
+	            }
+	        }
+	    }, {
+	        key: 'bind',
+	        value: function bind() {
+	            this.bindings.sort(function (a, b) {
+	                var aPriority = defined(a.binder) ? a.binder.priority || 0 : 0;
+	                var bPriority = defined(b.binder) ? b.binder.priority || 0 : 0;
+	                return bPriority - aPriority;
+	            });
+	            this.bindings.forEach(function (binding) {
+	                binding.bind();
+	            });
+	        }
+	    }, {
+	        key: 'unbind',
+	        value: function unbind() {
+	            this.bindings.forEach(function (binding) {
+	                binding.unbind();
+	            });
+	        }
+	    }]);
+	
+	    return ViewModel;
+	}();
+	
+	exports.default = ViewModel;
+	
+	
+	ViewModel.binders = {
+	    value: {
+	        bind: function bind(el) {
+	            el.addEventListener('change', this.update);
+	        },
+	        sync: function sync(el, value) {
+	            if (el.type === 'checkbox') {
+	                el.checked = !!value;
+	            } else {
+	                el.value = value;
+	            }
+	        },
+	        value: function value(el) {
+	            if (el.type === 'checkbox') {
+	                return el.checked;
+	            } else {
+	                return el.value;
+	            }
+	        }
+	    },
+	
+	    html: {
+	        sync: function sync(el, value) {
+	            el.innerHTML = value;
+	        }
+	    },
+	
+	    show: {
+	        priority: 2000,
+	        sync: function sync(el, value) {
+	            el.style.display = value ? '' : 'none';
+	        }
+	    },
+	
+	    each: {
+	        block: true,
+	
+	        bind: function bind(el) {
+	            if (!defined(this.marker)) {
+	                var attr = this.args[0];
+	                this.marker = document.createComment('mvvm - each - ' + attr);
+	                this.iterated = [];
+	
+	                el.removeAttribute('data-each');
+	                el.parentNode.insertBefore(this.marker, el);
+	                el.parentNode.removeChild(el);
+	            } else {
+	                this.iterated.forEach(function (vm) {
+	                    vm.bind();
+	                });
+	            }
+	        },
+	        unbind: function unbind(el) {
+	            if (defined(this.iterated)) {
+	                this.iterated.forEach(function (vm) {
+	                    vm.unbind();
+	                });
+	                this.iterated = [];
+	            }
+	        },
+	        sync: function sync(el, value) {
+	            var _this2 = this;
+	
+	            var item = this.args[0];
+	            var collection = value || [];
+	
+	            this.iterated.forEach(function (vm) {
+	                vm.unbind();
+	                _this2.marker.parentNode.removeChild(vm.el);
+	            });
+	            this.iterated = [];
+	
+	            collection.forEach(function (model, $index) {
+	                var _data;
+	
+	                var data = (_data = {
+	                    $index: $index
+	                }, _defineProperty(_data, item, model), _defineProperty(_data, '$root', _this2.vm.model), _data);
+	                var template = el.cloneNode(true);
+	                var vm = new ViewModel(template, data);
+	                _this2.iterated.push(vm);
+	                _this2.marker.parentNode.appendChild(template);
+	            });
+	        }
+	    },
+	
+	    on: {
+	        bind: function bind(el) {
+	            var _this3 = this;
+	
+	            var args = this.args.slice(1).map(function (key) {
+	                return _this3.vm.model[key];
+	            });
+	            el.addEventListener(this.args[0], function (e) {
+	                args.unshift(e);
+	                _this3.observer.value.apply(_this3.vm.model, args);
+	            });
+	        }
+	    },
+	
+	    '*': {
+	        sync: function sync(el, value) {
+	            if (defined(value)) {
+	                el.setAttribute(this.args[0], value);
+	            } else {
+	                el.removeAttribute(this.args[0]);
+	            }
+	        }
+	    }
+	};
+
+/***/ },
+/* 5 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _observer = __webpack_require__(1);
+	
+	var _observer2 = _interopRequireDefault(_observer);
+	
+	var _lodash = __webpack_require__(2);
+	
+	var _lodash2 = _interopRequireDefault(_lodash);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	function defined(obj) {
+	    return !_lodash2.default.isUndefined(obj) && !_lodash2.default.isNull(obj);
+	}
+	
+	var Binding = function () {
+	    function Binding(vm, el, key, binder, type) {
+	        _classCallCheck(this, Binding);
+	
+	        this.vm = vm;
+	        this.el = el;
+	        this.key = key;
+	        this.binder = binder;
+	        this.type = type;
+	        if (_lodash2.default.isFunction(binder)) {
+	            this.binder.sync = binder;
+	        }
+	
+	        this.bind = this.bind.bind(this);
+	        this.sync = this.sync.bind(this);
+	        this.update = this.update.bind(this);
+	
+	        this.parsekey();
+	        this.observer = new _observer2.default(this.vm.model, this.key, this.sync);
+	    }
+	
+	    _createClass(Binding, [{
+	        key: 'parsekey',
+	        value: function parsekey() {
+	            this.args = this.key.split(':').map(function (k) {
+	                return k.trim();
+	            });
+	            this.key = this.args.shift();
+	        }
+	    }, {
+	        key: 'bind',
+	        value: function bind() {
+	            if (defined(this.binder.bind)) {
+	                this.binder.bind.call(this, this.el);
+	            }
+	            this.sync();
+	        }
+	    }, {
+	        key: 'unbind',
+	        value: function unbind() {
+	            if (defined(this.observer)) {
+	                this.observer.unobserve();
+	            }
+	            if (defined(this.binder.unbind)) {
+	                this.binder.unbind(this.this.el);
+	            }
+	        }
+	    }, {
+	        key: 'sync',
+	        value: function sync() {
+	            if (defined(this.observer) && _lodash2.default.isFunction(this.binder.sync)) {
+	                this.binder.sync.call(this, this.el, this.observer.value);
+	            }
+	        }
+	    }, {
+	        key: 'update',
+	        value: function update() {
+	            if (defined(this.observer) && _lodash2.default.isFunction(this.binder.value)) {
+	                this.observer.value = this.binder.value.call(this, this.el);
+	            }
+	        }
+	    }]);
+	
+	    return Binding;
+	}();
+	
+	exports.default = Binding;
 
 /***/ }
 /******/ ]);
